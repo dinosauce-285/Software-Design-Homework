@@ -170,52 +170,24 @@ router.get("/detail", async (req, res) => {
   }
   console.log("Product details:", product);
   // Determine product status
-  const now = new Date();
-  const endDate = new Date(product.end_at);
-  let productStatus = "ACTIVE";
-
-  // Auto-close auction if time expired and not yet closed
-  if (endDate <= now && !product.closed_at && product.is_sold === null) {
-    // Update closed_at to mark auction end time
-    await productModel.updateProduct(productId, { closed_at: endDate });
-    product.closed_at = endDate; // Update local object
-  }
-
-  if (product.is_sold === true) {
-    productStatus = "SOLD";
-  } else if (product.is_sold === false) {
-    productStatus = "CANCELLED";
-  } else if (
-    (endDate <= now || product.closed_at) &&
-    product.highest_bidder_id
-  ) {
-    productStatus = "PENDING";
-  } else if (endDate <= now && !product.highest_bidder_id) {
-    productStatus = "EXPIRED";
-  } else if (endDate > now && !product.closed_at) {
-    productStatus = "ACTIVE";
-  }
+  const productStatus = product.status;
 
   // Authorization check: Non-ACTIVE products can only be viewed by seller or highest bidder
   if (productStatus !== "ACTIVE") {
     if (!userId) {
       // User not logged in, cannot view non-active products
-      return res
-        .status(403)
-        .render("403", {
-          message: "You do not have permission to view this product",
-        });
+      return res.status(403).render("403", {
+        message: "You do not have permission to view this product",
+      });
     }
 
     const isSeller = product.seller_id === userId;
     const isHighestBidder = product.highest_bidder_id === userId;
 
     if (!isSeller && !isHighestBidder) {
-      return res
-        .status(403)
-        .render("403", {
-          message: "You do not have permission to view this product",
-        });
+      return res.status(403).render("403", {
+        message: "You do not have permission to view this product",
+      });
     }
   }
 
@@ -612,22 +584,7 @@ router.get("/complete-order", isAuthenticated, async (req, res) => {
   }
 
   // Determine product status
-  const now = new Date();
-  const endDate = new Date(product.end_at);
-  let productStatus = "ACTIVE";
-
-  if (product.is_sold === true) {
-    productStatus = "SOLD";
-  } else if (product.is_sold === false) {
-    productStatus = "CANCELLED";
-  } else if (
-    (endDate <= now || product.closed_at) &&
-    product.highest_bidder_id
-  ) {
-    productStatus = "PENDING";
-  } else if (endDate <= now && !product.highest_bidder_id) {
-    productStatus = "EXPIRED";
-  }
+  const productStatus = product.status;
 
   // Only PENDING products can access this page
   if (productStatus !== "PENDING") {
@@ -639,11 +596,9 @@ router.get("/complete-order", isAuthenticated, async (req, res) => {
   const isHighestBidder = product.highest_bidder_id === userId;
 
   if (!isSeller && !isHighestBidder) {
-    return res
-      .status(403)
-      .render("403", {
-        message: "You do not have permission to access this page",
-      });
+    return res.status(403).render("403", {
+      message: "You do not have permission to access this page",
+    });
   }
 
   // Fetch or create order
@@ -1180,10 +1135,7 @@ router.post("/reject-bidder", isAuthenticated, async (req, res) => {
       }
 
       // Check product status - only allow rejection for ACTIVE products
-      const now = new Date();
-      const endDate = new Date(product.end_at);
-
-      if (product.is_sold !== null || endDate <= now || product.closed_at) {
+      if (product.status !== "ACTIVE") {
         throw new Error("Can only reject bidders for active auctions");
       }
 
@@ -1369,10 +1321,7 @@ router.post("/unreject-bidder", isAuthenticated, async (req, res) => {
     }
 
     // Check product status - only allow unrejection for ACTIVE products
-    const now = new Date();
-    const endDate = new Date(product.end_at);
-
-    if (product.is_sold !== null || endDate <= now || product.closed_at) {
+    if (product.status !== "ACTIVE") {
       throw new Error("Can only unreject bidders for active auctions");
     }
 

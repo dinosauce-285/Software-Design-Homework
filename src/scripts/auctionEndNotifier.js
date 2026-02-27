@@ -3,8 +3,8 @@
  * Script kiểm tra và gửi email thông báo khi đấu giá kết thúc
  */
 
-import * as productModel from '../models/product.model.js';
-import { sendMail } from '../utils/mailer.js';
+import * as productModel from "../models/product.model.js";
+import { sendMail } from "../utils/mailer.js";
 
 /**
  * Kiểm tra các đấu giá kết thúc và gửi email thông báo
@@ -12,7 +12,7 @@ import { sendMail } from '../utils/mailer.js';
 export async function checkAndNotifyEndedAuctions() {
   try {
     const endedAuctions = await productModel.getNewlyEndedAuctions();
-    
+
     if (endedAuctions.length === 0) {
       return;
     }
@@ -21,8 +21,8 @@ export async function checkAndNotifyEndedAuctions() {
 
     for (const auction of endedAuctions) {
       try {
-        const productUrl = `${process.env.BASE_URL || 'http://localhost:3005'}/products/detail?id=${auction.id}`;
-        
+        const productUrl = `${process.env.BASE_URL || "http://localhost:3005"}/products/detail?id=${auction.id}`;
+
         // Có người thắng
         if (auction.highest_bidder_id) {
           // Gửi email cho người thắng
@@ -41,7 +41,7 @@ export async function checkAndNotifyEndedAuctions() {
                     <div style="background-color: white; padding: 20px; border-radius: 10px; margin: 20px 0; border-left: 4px solid #28a745;">
                       <h3 style="margin: 0 0 10px 0; color: #333;">${auction.name}</h3>
                       <p style="font-size: 24px; color: #28a745; margin: 0; font-weight: bold;">
-                        ${new Intl.NumberFormat('en-US').format(auction.current_price)} VND
+                        ${new Intl.NumberFormat("en-US").format(auction.current_price)} VND
                       </p>
                     </div>
                     <p>Please complete your payment to finalize the purchase.</p>
@@ -55,9 +55,11 @@ export async function checkAndNotifyEndedAuctions() {
                   <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
                   <p style="color: #888; font-size: 12px; text-align: center;">This is an automated message from Online Auction. Please do not reply to this email.</p>
                 </div>
-              `
+              `,
             });
-            console.log(`✅ Winner notification sent to ${auction.winner_email} for product #${auction.id}`);
+            console.log(
+              `✅ Winner notification sent to ${auction.winner_email} for product #${auction.id}`,
+            );
           }
 
           // Gửi email cho người bán - Có người thắng
@@ -77,7 +79,7 @@ export async function checkAndNotifyEndedAuctions() {
                       <h3 style="margin: 0 0 10px 0; color: #333;">${auction.name}</h3>
                       <p style="margin: 5px 0;"><strong>Winner:</strong> ${auction.winner_name}</p>
                       <p style="font-size: 24px; color: #72AEC8; margin: 10px 0 0 0; font-weight: bold;">
-                        ${new Intl.NumberFormat('en-US').format(auction.current_price)} VND
+                        ${new Intl.NumberFormat("en-US").format(auction.current_price)} VND
                       </p>
                     </div>
                     <p>The winner has been notified to complete payment. You will receive another notification once payment is confirmed.</p>
@@ -90,9 +92,11 @@ export async function checkAndNotifyEndedAuctions() {
                   <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
                   <p style="color: #888; font-size: 12px; text-align: center;">This is an automated message from Online Auction. Please do not reply to this email.</p>
                 </div>
-              `
+              `,
             });
-            console.log(`✅ Seller notification sent to ${auction.seller_email} for product #${auction.id}`);
+            console.log(
+              `✅ Seller notification sent to ${auction.seller_email} for product #${auction.id}`,
+            );
           }
         } else {
           // Không có người thắng - Chỉ thông báo cho người bán
@@ -114,7 +118,7 @@ export async function checkAndNotifyEndedAuctions() {
                     </div>
                     <p>You can relist this product or create a new auction with adjusted pricing.</p>
                     <div style="text-align: center; margin: 30px 0;">
-                      <a href="${process.env.BASE_URL || 'http://localhost:3005'}/seller/add" style="display: inline-block; background: linear-gradient(135deg, #72AEC8 0%, #5a9ab8 100%); color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; font-weight: bold;">
+                      <a href="${process.env.BASE_URL || "http://localhost:3005"}/seller/add" style="display: inline-block; background: linear-gradient(135deg, #72AEC8 0%, #5a9ab8 100%); color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; font-weight: bold;">
                         Create New Auction
                       </a>
                     </div>
@@ -122,22 +126,29 @@ export async function checkAndNotifyEndedAuctions() {
                   <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
                   <p style="color: #888; font-size: 12px; text-align: center;">This is an automated message from Online Auction. Please do not reply to this email.</p>
                 </div>
-              `
+              `,
             });
-            console.log(`✅ Seller notification (no bidders) sent to ${auction.seller_email} for product #${auction.id}`);
+            console.log(
+              `✅ Seller notification (no bidders) sent to ${auction.seller_email} for product #${auction.id}`,
+            );
           }
         }
 
+        // Update product status
+        const newStatus = auction.highest_bidder_id ? "PENDING" : "EXPIRED";
+        await productModel.updateStatus(auction.id, newStatus);
+
         // Đánh dấu đã gửi thông báo
         await productModel.markEndNotificationSent(auction.id);
-
       } catch (emailError) {
-        console.error(`❌ Failed to send notification for product #${auction.id}:`, emailError);
+        console.error(
+          `❌ Failed to send notification for product #${auction.id}:`,
+          emailError,
+        );
       }
     }
-
   } catch (error) {
-    console.error('❌ Error checking ended auctions:', error);
+    console.error("❌ Error checking ended auctions:", error);
   }
 }
 
@@ -146,11 +157,13 @@ export async function checkAndNotifyEndedAuctions() {
  * @param {number} intervalSeconds - Khoảng thời gian giữa các lần kiểm tra (giây)
  */
 export function startAuctionEndNotifier(intervalSeconds = 30) {
-  console.log(`🚀 Auction End Notifier started (checking every ${intervalSeconds} second(s))`);
-  
+  console.log(
+    `🚀 Auction End Notifier started (checking every ${intervalSeconds} second(s))`,
+  );
+
   // Chạy ngay lần đầu
   checkAndNotifyEndedAuctions();
-  
+
   // Sau đó chạy định kỳ
   setInterval(checkAndNotifyEndedAuctions, intervalSeconds * 1000);
 }
