@@ -11,6 +11,7 @@ import { sendMail } from "../utils/mailer.js";
 import { AuthService } from "../services/auth.service.js";
 import { CaptchaService } from "../services/captcha.service.js";
 import { IdentityProviderFactory } from "../utils/identity.provider.js";
+import { calculatePagination } from "../utils/paginationHelper.js";
 
 export default function createAccountRouter(container) {
   const router = express.Router();
@@ -508,21 +509,10 @@ export default function createAccountRouter(container) {
     );
     const total = await watchlistModel.countByUserId(currentUserId);
     const totalCount = Number(total.count);
-    const nPages = Math.ceil(totalCount / limit);
-    let from = (page - 1) * limit + 1;
-    let to = page * limit;
-    if (to > totalCount) to = totalCount;
-    if (totalCount === 0) {
-      from = 0;
-      to = 0;
-    }
+    const paginationData = calculatePagination(totalCount, page, limit);
     res.render("vwAccount/watchlist", {
       products: watchlistProducts,
-      totalCount,
-      from,
-      to,
-      currentPage: page,
-      totalPages: nPages,
+      ...paginationData,
     });
   });
 

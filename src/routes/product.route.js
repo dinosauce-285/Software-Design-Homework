@@ -8,6 +8,7 @@ import * as productDescUpdateModel from "../models/productDescriptionUpdate.mode
 import * as systemSettingModel from "../models/systemSetting.model.js";
 import * as rejectedBidderModel from "../models/rejectedBidder.model.js";
 import { hasPermission, Permissions } from "../utils/rbac.js";
+import { calculatePagination } from "../utils/paginationHelper.js";
 const router = express.Router();
 
 const prepareProductList = async (products) => {
@@ -61,21 +62,11 @@ router.get("/category", async (req, res) => {
   const total = await productCatalogModel.countByCategoryIds(categoryIds);
   console.log("Total products in category:", total.count);
   const totalCount = parseInt(total.count) || 0;
-  const nPages = Math.ceil(totalCount / limit);
-  let from = (page - 1) * limit + 1;
-  let to = page * limit;
-  if (to > totalCount) to = totalCount;
-  if (totalCount === 0) {
-    from = 0;
-    to = 0;
-  }
+  const paginationData = calculatePagination(totalCount, page, limit);
+
   res.render("vwProduct/list", {
     products: products,
-    totalCount,
-    from,
-    to,
-    currentPage: page,
-    totalPages: nPages,
+    ...paginationData,
     categoryId: categoryId,
     categoryName: category ? category.name : null,
     sort: sort,
@@ -123,23 +114,11 @@ router.get("/search", async (req, res) => {
   const products = await prepareProductList(list);
   const total = await productCatalogModel.countByKeywords(keywords, logic);
   const totalCount = parseInt(total.count) || 0;
-
-  const nPages = Math.ceil(totalCount / limit);
-  let from = (page - 1) * limit + 1;
-  let to = page * limit;
-  if (to > totalCount) to = totalCount;
-  if (totalCount === 0) {
-    from = 0;
-    to = 0;
-  }
+  const paginationData = calculatePagination(totalCount, page, limit);
 
   res.render("vwProduct/list", {
     products: products,
-    totalCount,
-    from,
-    to,
-    currentPage: page,
-    totalPages: nPages,
+    ...paginationData,
     q: q,
     logic: logic,
     sort: sort,
