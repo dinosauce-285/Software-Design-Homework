@@ -17,6 +17,10 @@ import { startAuctionEndNotifier } from "./scripts/auctionEndNotifier.js";
 // Import Routes
 import homeRouter from "./routes/home.route.js";
 import productRouter from "./routes/product.route.js";
+import productBiddingRouter from "./routes/product-bidding.route.js";
+import productOrderRouter from "./routes/product-order.route.js";
+import productReviewRouter from "./routes/product-review.route.js";
+import productWatchlistRouter from "./routes/product-watchlist.route.js";
 import accountRouter from "./routes/account.route.js";
 import adminCategoryRouter from "./routes/admin/category.route.js";
 import adminUserRouter from "./routes/admin/user.route.js";
@@ -435,6 +439,10 @@ app.get("/api/categories", async (req, res) => {
 // Các Route Client (Đặt cuối cùng để tránh override)
 app.use("/", homeRouter);
 app.use("/products", productRouter);
+app.use("/products", productBiddingRouter);
+app.use("/products", productOrderRouter);
+app.use("/products", productReviewRouter);
+app.use("/products", productWatchlistRouter);
 app.use("/account", accountRouter);
 
 app.listen(PORT, function () {
