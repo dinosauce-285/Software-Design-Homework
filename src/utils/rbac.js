@@ -10,6 +10,7 @@ export const Permissions = {
   EDIT_PRODUCT: "EDIT_PRODUCT",
   DELETE_PRODUCT: "DELETE_PRODUCT",
   VIEW_OWN_PRODUCTS: "VIEW_OWN_PRODUCTS",
+  VIEW_ALL_PRODUCTS: "VIEW_ALL_PRODUCTS",
 
   // User/Admin Permissions
   MANAGE_USERS: "MANAGE_USERS",
@@ -36,6 +37,7 @@ export const RolePermissions = {
     Permissions.MANAGE_UPGRADE_REQUESTS,
     Permissions.MANAGE_CATEGORIES,
     Permissions.DELETE_PRODUCT,
+    Permissions.VIEW_ALL_PRODUCTS,
   ],
 };
 

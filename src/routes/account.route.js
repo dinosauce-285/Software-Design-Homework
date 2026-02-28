@@ -10,6 +10,7 @@ import { isAuthenticated } from "../middlewares/auth.mdw.js";
 import { sendMail } from "../utils/mailer.js";
 import { AuthService } from "../services/auth.service.js";
 import { CaptchaService } from "../services/captcha.service.js";
+import { IdentityProviderFactory } from "../utils/identity.provider.js";
 
 const router = express.Router();
 
@@ -430,17 +431,15 @@ router.put("/profile", isAuthenticated, async (req, res) => {
     // Lấy thông tin user hiện tại
     const currentUser = await userModel.findById(currentUserId);
 
-    // 2. KIỂM TRA MẬT KHẨU CŨ (Chỉ cho non-OAuth users)
-    if (!currentUser.oauth_provider) {
-      if (
-        !old_password ||
-        !bcrypt.compareSync(old_password, currentUser.password_hash)
-      ) {
-        return res.render("vwAccount/profile", {
-          user: currentUser,
-          err_message: "Password is incorrect!",
-        });
-      }
+    // 2. KIỂM TRA MẬT KHẨU (Giao phó cho Strategy Pattern IdentityProvider)
+    const identityProvider = IdentityProviderFactory.getProvider(currentUser);
+    try {
+      identityProvider.validateProfileUpdate(currentUser, req.body);
+    } catch (validationErr) {
+      return res.render("vwAccount/profile", {
+        user: currentUser,
+        err_message: validationErr.message,
+      });
     }
 
     // 3. KIỂM TRA TRÙNG EMAIL
@@ -454,32 +453,8 @@ router.put("/profile", isAuthenticated, async (req, res) => {
       }
     }
 
-    // 4. KIỂM TRA MẬT KHẨU MỚI (Chỉ cho non-OAuth users)
-    if (!currentUser.oauth_provider && new_password) {
-      if (new_password !== confirm_new_password) {
-        return res.render("vwAccount/profile", {
-          user: currentUser,
-          err_message: "New passwords do not match.",
-        });
-      }
-    }
-
-    // 5. CHUẨN BỊ DỮ LIỆU UPDATE
-    const entity = {
-      email,
-      fullname,
-      address: address || currentUser.address,
-      date_of_birth: date_of_birth
-        ? new Date(date_of_birth)
-        : currentUser.date_of_birth,
-    };
-
-    // Chỉ cập nhật password cho non-OAuth users
-    if (!currentUser.oauth_provider) {
-      entity.password_hash = new_password
-        ? bcrypt.hashSync(new_password, 10)
-        : currentUser.password_hash;
-    }
+    // 4. CHUẨN BỊ DỮ LIỆU UPDATE
+    const entity = identityProvider.prepareUpdateEntity(currentUser, req.body);
 
     // 6. GỌI MODEL UPDATE (Model đã sửa để trả về Object)
     const updatedUser = await userModel.update(currentUserId, entity);

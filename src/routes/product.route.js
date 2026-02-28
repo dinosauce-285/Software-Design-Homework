@@ -18,6 +18,7 @@ import { sendMail } from "../utils/mailer.js";
 import db from "../utils/db.js";
 import { BiddingService } from "../services/bidding.service.js";
 import { NotificationService } from "../services/notification.service.js";
+import { hasPermission, Permissions } from "../utils/rbac.js";
 import multer from "multer";
 import path from "path";
 const router = express.Router();
@@ -184,7 +185,10 @@ router.get("/detail", async (req, res) => {
     const isSeller = product.seller_id === userId;
     const isHighestBidder = product.highest_bidder_id === userId;
 
-    if (!isSeller && !isHighestBidder) {
+    const role = req.session.authUser?.role;
+    const canViewAll = hasPermission(role, Permissions.VIEW_ALL_PRODUCTS);
+
+    if (!isSeller && !isHighestBidder && !canViewAll) {
       return res.status(403).render("403", {
         message: "You do not have permission to view this product",
       });
@@ -595,7 +599,10 @@ router.get("/complete-order", isAuthenticated, async (req, res) => {
   const isSeller = product.seller_id === userId;
   const isHighestBidder = product.highest_bidder_id === userId;
 
-  if (!isSeller && !isHighestBidder) {
+  const role = req.session.authUser?.role;
+  const canViewAll = hasPermission(role, Permissions.VIEW_ALL_PRODUCTS);
+
+  if (!isSeller && !isHighestBidder && !canViewAll) {
     return res.status(403).render("403", {
       message: "You do not have permission to access this page",
     });
