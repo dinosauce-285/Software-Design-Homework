@@ -1,5 +1,22 @@
 import db from "../utils/db.js";
 
+export const BID_COUNT_QUERY = db.raw(`
+  (
+    SELECT COUNT(*) 
+    FROM bidding_history 
+    WHERE bidding_history.product_id = products.id
+  ) AS bid_count
+`);
+
+export const MASK_BIDDER_NAME_QUERY = db.raw(`mask_name_alternating(users.fullname) AS bidder_name`);
+
+export const PRODUCT_SUMMARY_SELECTORS = [
+  "products.*",
+  MASK_BIDDER_NAME_QUERY,
+  BID_COUNT_QUERY,
+];
+
+
 export function findAll() {
   return db("products")
     .leftJoin("users as bidder", "products.highest_bidder_id", "bidder.id")
@@ -8,13 +25,7 @@ export function findAll() {
       "products.*",
       "seller.fullname as seller_name",
       "bidder.fullname as highest_bidder_name",
-      db.raw(`
-        (
-          SELECT COUNT(*) 
-          FROM bidding_history 
-          WHERE bidding_history.product_id = products.id
-        ) AS bid_count
-      `),
+      BID_COUNT_QUERY,
     );
 }
 
@@ -38,13 +49,7 @@ export async function findByProductIdForAdmin(productId, userId) {
       "bidder.fullname as highest_bidder_name",
       "seller.fullname as seller_name",
       "categories.name as category_name",
-      db.raw(`
-        (
-          SELECT COUNT(*) 
-          FROM bidding_history 
-          WHERE bidding_history.product_id = products.id
-        ) AS bid_count
-      `),
+      BID_COUNT_QUERY,
       db.raw("watchlists.product_id IS NOT NULL AS is_favorite"),
     );
 
@@ -62,17 +67,7 @@ export async function findByProductIdForAdmin(productId, userId) {
 export function findPage(limit, offset) {
   return db("products")
     .leftJoin("users", "products.highest_bidder_id", "users.id")
-    .select(
-      "products.*",
-      db.raw(`mask_name_alternating(users.fullname) AS bidder_name`),
-      db.raw(`
-        (
-          SELECT COUNT(*) 
-          FROM bidding_history 
-          WHERE bidding_history.product_id = products.id
-        ) AS bid_count
-      `),
-    )
+    .select(...PRODUCT_SUMMARY_SELECTORS)
     .limit(limit)
     .offset(offset);
 }
@@ -144,16 +139,8 @@ export function searchPageByKeywords(
       }
     })
     .select(
-      "products.*",
+      ...PRODUCT_SUMMARY_SELECTORS,
       "categories.name as category_name",
-      db.raw(`mask_name_alternating(users.fullname) AS bidder_name`),
-      db.raw(`
-        ( 
-          SELECT COUNT(*)
-          FROM bidding_history
-          WHERE bidding_history.product_id = products.id
-        ) AS bid_count
-      `),
       db.raw("watchlists.product_id IS NOT NULL AS is_favorite"),
     );
 
@@ -251,15 +238,7 @@ export function findByCategoryId(
     .where("products.end_at", ">", new Date())
     .whereNull("products.closed_at")
     .select(
-      "products.*",
-      db.raw(`mask_name_alternating(users.fullname) AS bidder_name`),
-      db.raw(`
-        (
-          SELECT COUNT(*) 
-          FROM bidding_history 
-          WHERE bidding_history.product_id = products.id
-        ) AS bid_count
-      `),
+      ...PRODUCT_SUMMARY_SELECTORS,
       db.raw("watchlists.product_id IS NOT NULL AS is_favorite"),
     )
     .modify((queryBuilder) => {
@@ -306,15 +285,7 @@ export function findByCategoryIds(
     .where("products.end_at", ">", new Date())
     .whereNull("products.closed_at")
     .select(
-      "products.*",
-      db.raw(`mask_name_alternating(users.fullname) AS bidder_name`),
-      db.raw(`
-        (
-          SELECT COUNT(*) 
-          FROM bidding_history 
-          WHERE bidding_history.product_id = products.id
-        ) AS bid_count
-      `),
+      ...PRODUCT_SUMMARY_SELECTORS,
       db.raw("watchlists.product_id IS NOT NULL AS is_favorite"),
     )
     .modify((queryBuilder) => {
@@ -345,13 +316,7 @@ export function countByCategoryIds(categoryIds) {
 
 const BASE_QUERY = db("products")
   .leftJoin("users", "products.highest_bidder_id", "users.id")
-  .select(
-    "products.*",
-    db.raw(`mask_name_alternating(users.fullname) AS bidder_name`),
-    db.raw(
-      `(SELECT COUNT(*) FROM bidding_history WHERE product_id = products.id) AS bid_count`,
-    ),
-  )
+  .select(...PRODUCT_SUMMARY_SELECTORS)
   .where("end_at", ">", new Date())
   .limit(5);
 
@@ -372,13 +337,7 @@ export function findTopPrice() {
 export function findTopBids() {
   return db("products")
     .leftJoin("users", "products.highest_bidder_id", "users.id")
-    .select(
-      "products.*",
-      db.raw(`mask_name_alternating(users.fullname) AS bidder_name`),
-      db.raw(
-        `(SELECT COUNT(*) FROM bidding_history WHERE product_id = products.id) AS bid_count`,
-      ),
-    )
+    .select(...PRODUCT_SUMMARY_SELECTORS)
     .where("products.end_at", ">", new Date())
     .whereNull("products.closed_at")
     .orderBy("bid_count", "desc")
@@ -403,13 +362,7 @@ export function findByProductId(productId) {
       "seller.created_at as seller_created_at",
       "categories.name as category_name",
       db.raw(`mask_name_alternating(highest_bidder.fullname) AS bidder_name`),
-      db.raw(`
-        (
-          SELECT COUNT(*) 
-          FROM bidding_history 
-          WHERE bidding_history.product_id = products.id
-        ) AS bid_count
-      `),
+      BID_COUNT_QUERY,
     );
 }
 
@@ -443,16 +396,10 @@ export async function findByProductId2(productId, userId) {
       "seller.email as seller_email",
       "seller.created_at as seller_created_at",
       "categories.name as category_name",
-      db.raw(`mask_name_alternating(users.fullname) AS bidder_name`),
+      MASK_BIDDER_NAME_QUERY,
       "users.fullname as highest_bidder_name",
       "users.email as highest_bidder_email",
-      db.raw(`
-        (
-          SELECT COUNT(*) 
-          FROM bidding_history 
-          WHERE bidding_history.product_id = products.id
-        ) AS bid_count
-      `),
+      BID_COUNT_QUERY,
       db.raw("watchlists.product_id IS NOT NULL AS is_favorite"),
     );
 
