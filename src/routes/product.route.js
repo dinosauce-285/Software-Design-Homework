@@ -1,5 +1,6 @@
 import express from "express";
 import * as productModel from "../models/product.model.js";
+import * as productCatalogModel from "../models/product.catalog.model.js";
 import * as reviewModel from "../models/review.model.js";
 import * as userModel from "../models/user.model.js";
 import * as watchListModel from "../models/watchlist.model.js";
@@ -63,7 +64,7 @@ router.get("/category", async (req, res) => {
     categoryIds = [categoryId, ...childIds];
   }
 
-  const list = await productModel.findByCategoryIds(
+  const list = await productCatalogModel.findByCategoryIds(
     categoryIds,
     limit,
     offset,
@@ -71,7 +72,7 @@ router.get("/category", async (req, res) => {
     userId,
   );
   const products = await prepareProductList(list);
-  const total = await productModel.countByCategoryIds(categoryIds);
+  const total = await productCatalogModel.countByCategoryIds(categoryIds);
   console.log("Total products in category:", total.count);
   const totalCount = parseInt(total.count) || 0;
   const nPages = Math.ceil(totalCount / limit);
@@ -125,7 +126,7 @@ router.get("/search", async (req, res) => {
   const keywords = q.trim();
 
   // Search in both product name and category
-  const list = await productModel.searchPageByKeywords(
+  const list = await productCatalogModel.searchPageByKeywords(
     keywords,
     limit,
     offset,
@@ -134,7 +135,7 @@ router.get("/search", async (req, res) => {
     sort,
   );
   const products = await prepareProductList(list);
-  const total = await productModel.countByKeywords(keywords, logic);
+  const total = await productCatalogModel.countByKeywords(keywords, logic);
   const totalCount = parseInt(total.count) || 0;
 
   const nPages = Math.ceil(totalCount / limit);
@@ -162,8 +163,9 @@ router.get("/search", async (req, res) => {
 router.get("/detail", async (req, res) => {
   const userId = req.session.authUser ? req.session.authUser.id : null;
   const productId = req.query.id;
-  const product = await productModel.findByProductId2(productId, userId);
-  const related_products = await productModel.findRelatedProducts(productId);
+  const product = await productCatalogModel.findByProductId2(productId, userId);
+  const related_products =
+    await productCatalogModel.findRelatedProducts(productId);
 
   // Kiểm tra nếu không tìm thấy sản phẩm
   if (!product) {
@@ -307,7 +309,7 @@ router.get("/bidding-history", isAuthenticated, async (req, res) => {
 
   try {
     // Get product information
-    const product = await productModel.findByProductId2(productId, null);
+    const product = await productCatalogModel.findByProductId2(productId, null);
 
     if (!product) {
       return res.status(404).render("404", { message: "Product not found" });
@@ -402,7 +404,7 @@ router.post("/comment", isAuthenticated, async (req, res) => {
     );
 
     // Get product and users for email notification
-    const product = await productModel.findByProductId2(productId, null);
+    const product = await productCatalogModel.findByProductId2(productId, null);
     const commenter = await userModel.findById(userId);
     const seller = await userModel.findById(product.seller_id);
     const productUrl = `${req.protocol}://${req.get("host")}/products/detail?id=${productId}`;
@@ -538,8 +540,9 @@ router.get("/bid-history/:productId", async (req, res) => {
       .status(500)
       .json({ success: false, message: "Unable to load bidding history" });
   }
-  const result = await productModel.findByProductId(productId);
-  const relatedProducts = await productModel.findRelatedProducts(productId);
+  const result = await productCatalogModel.findByProductId(productId);
+  const relatedProducts =
+    await productCatalogModel.findRelatedProducts(productId);
   const product = {
     thumbnail: result[0].thumbnail,
     sub_images: result.reduce((acc, curr) => {
@@ -581,7 +584,7 @@ router.get("/complete-order", isAuthenticated, async (req, res) => {
     return res.redirect("/");
   }
 
-  const product = await productModel.findByProductId2(productId, userId);
+  const product = await productCatalogModel.findByProductId2(productId, userId);
 
   if (!product) {
     return res.status(404).render("404", { message: "Product not found" });
@@ -1317,7 +1320,10 @@ router.post("/unreject-bidder", isAuthenticated, async (req, res) => {
 
   try {
     // Verify product ownership
-    const product = await productModel.findByProductId2(productId, sellerId);
+    const product = await productCatalogModel.findByProductId2(
+      productId,
+      sellerId,
+    );
 
     if (!product) {
       throw new Error("Product not found");
