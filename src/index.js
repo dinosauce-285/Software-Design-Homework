@@ -21,7 +21,7 @@ import productBiddingRouter from "./routes/product-bidding.route.js";
 import productOrderRouter from "./routes/product-order.route.js";
 import productReviewRouter from "./routes/product-review.route.js";
 import productWatchlistRouter from "./routes/product-watchlist.route.js";
-import accountRouter from "./routes/account.route.js";
+import createAccountRouter from "./routes/account.route.js";
 import adminCategoryRouter from "./routes/admin/category.route.js";
 import adminUserRouter from "./routes/admin/user.route.js";
 import adminAccountRouter from "./routes/admin/account.route.js";
@@ -34,11 +34,26 @@ import { Permissions } from "./utils/rbac.js";
 import * as categoryModel from "./models/category.model.js";
 import * as userModel from "./models/user.model.js";
 
+import DIContainer from "./utils/di.container.js";
+import EmailProvider from "./services/email.provider.js";
+import CryptoProvider from "./services/crypto.provider.js";
+import db from "./utils/db.js";
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3005;
+
+// ============================================================
+// 0. DI CONTAINER
+// ============================================================
+const container = new DIContainer();
+container.register("EmailProvider", new EmailProvider());
+container.register("CryptoProvider", new CryptoProvider());
+// Using the imported db instance here
+import { UserModel } from "./models/user.model.js";
+container.register("UserModel", new UserModel(db));
 
 // ============================================================
 // 1. CẤU HÌNH CỐT LÕI
@@ -443,6 +458,8 @@ app.use("/products", productBiddingRouter);
 app.use("/products", productOrderRouter);
 app.use("/products", productReviewRouter);
 app.use("/products", productWatchlistRouter);
+
+const accountRouter = createAccountRouter(container);
 app.use("/account", accountRouter);
 
 app.listen(PORT, function () {
