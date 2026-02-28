@@ -370,7 +370,7 @@ router.post("/products/:id/append-description", async function (req, res) {
     }
 
     // Verify that the product belongs to the seller
-    const product = await productModel.findByProductId2(productId, null);
+    const product = await productCatalogModel.findByProductId2(productId, null);
     if (!product) {
       return res
         .status(404)
