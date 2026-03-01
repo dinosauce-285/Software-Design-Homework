@@ -96,20 +96,21 @@ export async function getBiddingProductsByBidderId(bidderId) {
  * @returns {Promise<Array>} Danh sách sản phẩm
  */
 export async function getWonAuctionsByBidderId(bidderId) {
+  const isPendingCondition = builder => {
+    builder.where(function () {
+      this.where('products.end_at', '<=', new Date())
+        .orWhereNotNull('products.closed_at');
+    }).whereNull('products.is_sold');
+  };
+
   return db('products')
     .leftJoin('categories', 'products.category_id', 'categories.id')
     .leftJoin('users as seller', 'products.seller_id', 'seller.id')
     .where('products.highest_bidder_id', bidderId)
-    .where(function() {
-      this.where(function() {
-        // Pending: (end_at <= NOW OR closed_at) AND is_sold IS NULL
-        this.where(function() {
-          this.where('products.end_at', '<=', new Date())
-            .orWhereNotNull('products.closed_at');
-        }).whereNull('products.is_sold');
-      })
-      .orWhere('products.is_sold', true)   // Sold
-      .orWhere('products.is_sold', false); // Cancelled
+    .andWhere(function () {
+      this.where(isPendingCondition)
+        .orWhere('products.is_sold', true)
+        .orWhere('products.is_sold', false);
     })
     .select(
       'products.*',
