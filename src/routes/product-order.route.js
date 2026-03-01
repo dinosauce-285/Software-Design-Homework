@@ -357,34 +357,15 @@ router.get("/order/:orderId/messages", isAuthenticated, async (req, res) => {
     // Get messages
     const messages = await orderChatModel.getMessagesByOrderId(orderId);
 
-    // Generate HTML for messages
-    let messagesHtml = "";
-    messages.forEach((msg) => {
-      const isSent = msg.sender_id === userId;
-      const messageClass = isSent ? "text-end" : "";
-      const bubbleClass = isSent ? "sent" : "received";
-
-      // Format date: HH:mm:ss DD/MM/YYYY
-      const msgDate = new Date(msg.created_at);
-      const year = msgDate.getFullYear();
-      const month = String(msgDate.getMonth() + 1).padStart(2, "0");
-      const day = String(msgDate.getDate()).padStart(2, "0");
-      const hour = String(msgDate.getHours()).padStart(2, "0");
-      const minute = String(msgDate.getMinutes()).padStart(2, "0");
-      const second = String(msgDate.getSeconds()).padStart(2, "0");
-      const formattedDate = `${hour}:${minute}:${second} ${day}/${month}/${year}`;
-
-      messagesHtml += `
-        <div class="chat-message ${messageClass}">
-          <div class="chat-bubble ${bubbleClass}">
-            <div>${msg.message}</div>
-            <div style="font-size: 0.7rem; margin-top: 3px; opacity: 0.8;">${formattedDate}</div>
-          </div>
-        </div>
-      `;
+    // Return pure JSON data
+    res.json({
+      success: true,
+      data: messages.map(msg => ({
+        message: msg.message,
+        isSent: msg.sender_id === userId,
+        createdAt: msg.created_at
+      }))
     });
-
-    res.json({ success: true, messagesHtml });
   } catch (error) {
     console.error("Get messages error:", error);
     res.status(500).json({ error: error.message || "Failed to get messages" });

@@ -1194,8 +1194,42 @@
           const messagesData = await messagesResponse.json();
           
           if (messagesData.success) {
-            // Update chat messages HTML
-            chatMessages.innerHTML = messagesData.messagesHtml || '';
+            // Update chat messages HTML from JSON data
+            let html = '';
+            (messagesData.data || []).forEach(msg => {
+              const messageClass = msg.isSent ? "text-end" : "";
+              const bubbleClass = msg.isSent ? "sent" : "received";
+              
+              // Safe HTML Escaping for message
+              const escapeHtml = (unsafe) => {
+                return (unsafe || '').toString()
+                  .replace(/&/g, "&amp;")
+                  .replace(/</g, "&lt;")
+                  .replace(/>/g, "&gt;")
+                  .replace(/"/g, "&quot;")
+                  .replace(/'/g, "&#039;");
+              };
+              const safeMessage = escapeHtml(msg.message);
+
+              const msgDate = new Date(msg.createdAt);
+              const year = msgDate.getFullYear();
+              const month = String(msgDate.getMonth() + 1).padStart(2, "0");
+              const day = String(msgDate.getDate()).padStart(2, "0");
+              const hour = String(msgDate.getHours()).padStart(2, "0");
+              const minute = String(msgDate.getMinutes()).padStart(2, "0");
+              const second = String(msgDate.getSeconds()).padStart(2, "0");
+              const formattedDate = `${hour}:${minute}:${second} ${day}/${month}/${year}`;
+
+              html += `
+                <div class="chat-message ${messageClass}">
+                  <div class="chat-bubble ${bubbleClass}">
+                    <div>${safeMessage}</div>
+                    <div style="font-size: 0.7rem; margin-top: 3px; opacity: 0.8;">${formattedDate}</div>
+                  </div>
+                </div>
+              `;
+            });
+            chatMessages.innerHTML = html;
             // Scroll to bottom
             chatMessages.scrollTop = chatMessages.scrollHeight;
           }
