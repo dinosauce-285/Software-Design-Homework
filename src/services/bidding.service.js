@@ -1,6 +1,7 @@
 import db from "../utils/db.js";
 import * as reviewModel from "../models/review.model.js";
 import * as systemSettingModel from "../models/systemSetting.model.js";
+import { calculateNewBidState } from "./bidding.algorithm.js";
 
 export class BiddingService {
   /**
@@ -128,93 +129,24 @@ export class BiddingService {
 
       // ========== AUTOMATIC BIDDING LOGIC ==========
 
-      let newCurrentPrice;
-      let newHighestBidderId;
-      let newHighestMaxPrice;
-      let shouldCreateHistory = true; // Flag to determine if we should create bidding history
-
-      // Special handling for buy_now_price: First-come-first-served
-      // If current highest bidder already has max >= buy_now, and a NEW bidder comes in,
-      // the existing bidder wins at buy_now price immediately
-      const buyNowPrice = product.buy_now_price
-        ? parseFloat(product.buy_now_price)
-        : null;
-      let buyNowTriggered = false;
-
-      if (
-        buyNowPrice &&
-        product.highest_bidder_id &&
-        product.highest_max_price &&
-        product.highest_bidder_id !== userId
-      ) {
-        const currentHighestMaxPrice = parseFloat(product.highest_max_price);
-
-        // If current highest bidder already bid >= buy_now, they win immediately (when new bidder comes)
-        if (currentHighestMaxPrice >= buyNowPrice) {
-          newCurrentPrice = buyNowPrice;
-          newHighestBidderId = product.highest_bidder_id;
-          newHighestMaxPrice = currentHighestMaxPrice;
-          buyNowTriggered = true;
-          // New bidder's auto-bid will be recorded, but they don't win
+      const {
+        newCurrentPrice,
+        newHighestBidderId,
+        newHighestMaxPrice,
+        shouldCreateHistory,
+        productSold,
+      } = calculateNewBidState(
+        {
+          product,
+          buyNowPrice,
+          currentPrice,
+          minIncrement,
+        },
+        {
+          userId,
+          bidAmount,
         }
-      }
-
-      // Only run normal auto-bidding if buy_now not triggered by existing bidder
-      if (!buyNowTriggered) {
-        // Case 0: Người đặt giá chính là người đang giữ giá cao nhất
-        if (product.highest_bidder_id === userId) {
-          // Chỉ update max_price trong auto_bidding, không thay đổi current_price
-          // Không tạo bidding_history mới vì giá không thay đổi
-          newCurrentPrice = parseFloat(
-            product.current_price || product.starting_price,
-          );
-          newHighestBidderId = userId;
-          newHighestMaxPrice = bidAmount; // Update max price
-          shouldCreateHistory = false; // Không tạo history mới
-        }
-        // Case 1: Chưa có người đấu giá nào (first bid)
-        else if (!product.highest_bidder_id || !product.highest_max_price) {
-          newCurrentPrice = product.starting_price; // Only 1 bidder, no competition, set to starting price
-          newHighestBidderId = userId;
-          newHighestMaxPrice = bidAmount;
-        }
-        // Case 2: Đã có người đấu giá trước đó
-        else {
-          const currentHighestMaxPrice = parseFloat(product.highest_max_price);
-          const currentHighestBidderId = product.highest_bidder_id;
-
-          // Case 2a: bidAmount < giá tối đa của người cũ
-          if (bidAmount < currentHighestMaxPrice) {
-            // Người cũ thắng, giá hiện tại = bidAmount của người mới
-            newCurrentPrice = bidAmount;
-            newHighestBidderId = currentHighestBidderId;
-            newHighestMaxPrice = currentHighestMaxPrice; // Giữ nguyên max price của người cũ
-          }
-          // Case 2b: bidAmount == giá tối đa của người cũ
-          else if (bidAmount === currentHighestMaxPrice) {
-            // Người cũ thắng theo nguyên tắc first-come-first-served
-            newCurrentPrice = bidAmount;
-            newHighestBidderId = currentHighestBidderId;
-            newHighestMaxPrice = currentHighestMaxPrice;
-          }
-          // Case 2c: bidAmount > giá tối đa của người cũ
-          else {
-            // Người mới thắng, giá hiện tại = giá max của người cũ + step_price
-            newCurrentPrice = currentHighestMaxPrice + minIncrement;
-            newHighestBidderId = userId;
-            newHighestMaxPrice = bidAmount;
-          }
-        }
-
-        // 7. Check if buy now price is reached after auto-bidding
-        if (buyNowPrice && newCurrentPrice >= buyNowPrice) {
-          // Nếu đạt giá mua ngay, set giá = buy_now_price
-          newCurrentPrice = buyNowPrice;
-          buyNowTriggered = true;
-        }
-      }
-
-      let productSold = buyNowTriggered;
+      );
 
       // 8. Update product with new price, highest bidder, and highest max price
       const updateData = {
