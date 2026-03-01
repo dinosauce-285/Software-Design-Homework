@@ -64,13 +64,6 @@ export async function findByProductIdForAdmin(productId, userId) {
   return product;
 }
 
-export function findPage(limit, offset) {
-  return db("products")
-    .leftJoin("users", "products.highest_bidder_id", "users.id")
-    .select(...PRODUCT_SUMMARY_SELECTORS)
-    .limit(limit)
-    .offset(offset);
-}
 
 export function searchPageByKeywords(
   keywords,
@@ -314,24 +307,24 @@ export function countByCategoryIds(categoryIds) {
     .first();
 }
 
-const BASE_QUERY = db("products")
-  .leftJoin("users", "products.highest_bidder_id", "users.id")
-  .select(...PRODUCT_SUMMARY_SELECTORS)
-  .where("end_at", ">", new Date())
-  .limit(5);
-
 export function findTopEnding() {
-  return BASE_QUERY.clone()
+  return db("products")
+    .leftJoin("users", "products.highest_bidder_id", "users.id")
+    .select(...PRODUCT_SUMMARY_SELECTORS)
     .where("products.end_at", ">", new Date())
     .whereNull("products.closed_at")
-    .orderBy("end_at", "asc");
+    .orderBy("end_at", "asc")
+    .limit(5);
 }
 
 export function findTopPrice() {
-  return BASE_QUERY.clone()
+  return db("products")
+    .leftJoin("users", "products.highest_bidder_id", "users.id")
+    .select(...PRODUCT_SUMMARY_SELECTORS)
     .where("products.end_at", ">", new Date())
     .whereNull("products.closed_at")
-    .orderBy("current_price", "desc");
+    .orderBy("current_price", "desc")
+    .limit(5);
 }
 
 export function findTopBids() {
