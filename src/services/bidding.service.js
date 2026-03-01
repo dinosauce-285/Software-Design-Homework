@@ -128,6 +128,7 @@ export class BiddingService {
       }
 
       // ========== AUTOMATIC BIDDING LOGIC ==========
+      const buyNowPrice = product.buy_now_price ? parseFloat(product.buy_now_price) : null;
 
       const {
         newCurrentPrice,
